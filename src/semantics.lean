@@ -94,3 +94,156 @@ begin
   apply impTaut,
   exact lhs
 end
+
+
+
+/- Semantics for PDL -/
+
+structure frame (W : Type) : Type :=
+  (val : W → char → Prop)
+  (rel : char → W → W → Prop)
+
+
+def size {W : Type} : psum (Σ' (ᾰ : frame W) (ᾰ : W), form) 
+(Σ' (ᾰ : frame W) (ᾰ : prog) (ᾰ : W), W) → ℕ
+| (psum.inl ⟨_, ⟨_, φ⟩⟩) := form_size φ 
+| (psum.inr ⟨_, ⟨a, ⟨_, _⟩⟩⟩) := prog_size a
+
+inductive closure {X: Type} (P : X → X → Prop) :  X → X → Prop
+| base : ∀ (x : X), closure x x
+| inductive_step : ∀ (x y z : X), P x y → closure y z → closure x z
+
+
+
+
+lemma decrease1 {W : Type} { F : frame W} {w : W } {φ} :  
+size (psum.inl ⟨F, ⟨w, φ⟩⟩) < size (psum.inl ⟨F, ⟨w, !φ⟩⟩) := 
+begin 
+  intros, unfold size, unfold form_size, finish,
+end 
+
+lemma decrease2 {W : Type} { F : frame W} {w : W } {φ} {ψ}:  
+size (psum.inl ⟨F, ⟨w, φ⟩⟩) < size (psum.inl ⟨F, ⟨w, φ&&ψ⟩⟩) :=
+begin 
+  intros, unfold size, unfold form_size,
+  have h1 : form_size φ <  form_size φ + 1, finish,
+  have h2 : form_size φ + 1 ≤ form_size φ + form_size ψ + 1, 
+  have h3 : form_size φ + form_size ψ + 1 = form_size φ + 1 + form_size ψ, finish,
+  rw h3, have h4 := fsize ψ,
+  have h5 :  form_size φ + 1 + 0 < form_size φ + 1 + form_size ψ, finish,
+  finish, exact nat.lt_of_lt_of_le h1 h2,
+end 
+
+lemma decrease3 {W : Type} { F : frame W} {w : W } {φ} {ψ}:  
+size (psum.inl ⟨F, ⟨w, ψ⟩⟩) < size (psum.inl ⟨F, ⟨w, φ&&ψ⟩⟩) :=
+begin 
+  intros, unfold size, unfold form_size,
+  have h1 : form_size ψ <  form_size ψ + 1, finish,
+  have h2 : form_size ψ + 1 ≤ form_size φ + form_size ψ + 1, 
+  have h3 : form_size φ + form_size ψ + 1 = form_size ψ + 1 + form_size φ, finish,
+  rw h3, have h4 := fsize φ,
+  have h5 :  form_size ψ + 1 + 0 < form_size ψ + 1 + form_size φ, finish,
+  finish, exact nat.lt_of_lt_of_le h1 h2,
+end 
+
+lemma decrease4 {W : Type} { F : frame W} {w : W } {φ} {a}:  
+size (psum.inl ⟨F, ⟨w, φ⟩⟩) < size (psum.inl ⟨F, ⟨w, form.box a φ⟩⟩) := 
+begin 
+  intros, unfold size, unfold form_size,
+  have h1 : form_size φ <  form_size φ + 1, finish,
+  have h2 : form_size φ + 1 ≤ form_size φ + prog_size a + 1, 
+  have h3 : form_size φ + prog_size a + 1 = form_size φ + 1 + prog_size a, finish,
+  rw h3, have h4 := psize a,
+  have h5 :  form_size φ + 1 + 0 < form_size φ + 1 + prog_size a, finish,
+  finish, exact nat.lt_of_lt_of_le h1 h2,
+end 
+
+lemma decrease5 {W : Type} { F : frame W} {w v : W } {φ} {a}: 
+size (psum.inr ⟨F, ⟨a, ⟨w, v⟩⟩⟩) < size (psum.inl ⟨F, ⟨w, form.box a φ⟩⟩) := 
+begin 
+  intros, unfold size, unfold form_size,
+  have h1 : prog_size a <  prog_size a + 1, finish,
+  have h2 : prog_size a + 1 ≤ form_size φ + prog_size a + 1, 
+  have h3 : prog_size a + 1 + form_size φ = form_size φ + prog_size a + 1, finish,
+  rw ← h3, have h4 := fsize φ,
+  have h5 : prog_size a + 1 + 0 < prog_size a + 1 + form_size φ, finish,
+  finish, exact nat.lt_of_lt_of_le h1 h2,
+end 
+
+lemma decrease6 {W : Type} { F : frame W} {w v: W } {a b}: 
+size (psum.inr ⟨F, ⟨a, ⟨w, v⟩⟩⟩) < size (psum.inr ⟨F, ⟨a ; b, ⟨w, v⟩⟩⟩) := 
+begin 
+  intros, unfold size, unfold prog_size,
+  have h1 : prog_size a <  prog_size a + 1, finish,
+  have h2 : prog_size a + 1 ≤ prog_size a + prog_size b + 1, 
+  have h3 : prog_size a + 1 + prog_size b = prog_size a + prog_size b + 1, finish,
+  rw ← h3, have h4 := psize b,
+  have h5 : prog_size a + 0 + 1 < prog_size a + prog_size b + 1, finish,
+  finish, exact nat.lt_of_lt_of_le h1 h2,
+end 
+
+lemma decrease7 {W : Type} { F : frame W} {w v: W } {a b}: 
+size (psum.inr ⟨F, ⟨b, ⟨w, v⟩⟩⟩) < size (psum.inr ⟨F, ⟨a ; b, ⟨w, v⟩⟩⟩) := 
+begin 
+  intros, unfold size, unfold prog_size,
+  have h1 : prog_size b <  prog_size b + 1, finish,
+  have h2 : prog_size b + 1 ≤ prog_size a + prog_size b + 1, 
+  have h3 : prog_size a + 1 + prog_size b = prog_size a + prog_size b + 1, finish,
+  rw ← h3, have h4 := psize b,
+  have h5 : prog_size a + 0 + 1 < prog_size a + prog_size b + 1, finish,
+  finish, exact nat.lt_of_lt_of_le h1 h2,
+end
+
+lemma decrease8 {W : Type} { F : frame W} {w v: W } {φ}: 
+size (psum.inl ⟨F, ⟨w, φ⟩⟩) < size (psum.inr ⟨F, ⟨?φ, ⟨w, v⟩⟩⟩) := 
+begin 
+  intros, unfold size, unfold prog_size, finish,
+end 
+
+lemma  decrease9 {W : Type} { F : frame W} {w v: W } {a}:
+size (psum.inr ⟨F, ⟨a, ⟨w, v⟩⟩⟩) < size (psum.inr ⟨F, ⟨⋆a, ⟨w, v⟩⟩⟩) := 
+begin 
+  intros, unfold size, unfold prog_size, finish,
+end 
+
+
+
+mutual def sat, path {W : Type}{ v : W } 
+with sat : (frame W) → W → form → Prop 
+| F w (# p) := F.val w p
+| F w (! φ) := 
+  have size (psum.inl ⟨F, ⟨w, φ⟩⟩) < size (psum.inl ⟨F, ⟨w, !φ⟩⟩),
+  from decrease1,
+  ¬ (sat F w φ)
+| F w (φ && ψ) := 
+  have size (psum.inl ⟨F, ⟨w, φ⟩⟩) < size (psum.inl ⟨F, ⟨w, φ&&ψ⟩⟩), 
+  from decrease2,
+  have size (psum.inl ⟨F, ⟨w, ψ⟩⟩) < size (psum.inl ⟨F, ⟨w, φ&&ψ⟩⟩), 
+  from decrease3,
+  (sat F w φ) ∧ (sat F w ψ) 
+| F w (form.box a φ) := 
+  have size (psum.inr ⟨F, ⟨a, ⟨w, v⟩⟩⟩) < size (psum.inl ⟨F, ⟨w, form.box a φ⟩⟩),
+  from decrease5,
+  have size (psum.inl ⟨F, ⟨w, φ⟩⟩) < size (psum.inl ⟨F, ⟨w, form.box a φ⟩⟩),
+  from decrease4,
+  ∃ (v : W), (path F a w v) ∧ (sat F v φ)
+with path : frame W → prog → W → W → Prop
+| F ($ a) w v := F.rel a w v 
+| F (a ; b) w v := 
+  have size (psum.inr ⟨F, ⟨a, ⟨w, v⟩⟩⟩) < size (psum.inr ⟨F, ⟨a ; b, ⟨w, v⟩⟩⟩),
+  from decrease6,
+  have size (psum.inr ⟨F, ⟨b, ⟨w, v⟩⟩⟩) < size (psum.inr ⟨F, ⟨a ; b, ⟨w, v⟩⟩⟩),
+  from decrease7,
+  ∃ (u : W), (path F a w u) ∧ (path F b u v) 
+| F (? φ) w v := 
+  have size (psum.inl ⟨F, ⟨w, φ⟩⟩) < size (psum.inr ⟨F, ⟨?φ, ⟨w, v⟩⟩⟩),
+  from decrease8,
+  (w = v) ∧ (sat F w φ)
+| F (⋆ a) w v := 
+  have size (psum.inr ⟨F, ⟨a, ⟨w, v⟩⟩⟩) < size (psum.inr ⟨F, ⟨⋆a, ⟨w, v⟩⟩⟩),
+  from  decrease9,
+  closure (path F a) w v 
+using_well_founded { rel_tac := λ _ _, `[exact ⟨_, measure_wf size⟩] }
+
+
+
